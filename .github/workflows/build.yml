@@ -1,0 +1,109 @@
+"auto";
+
+// 悬浮窗提示
+toast("听雨风格全局连点器已启动\n请将准星拖动至目标位置");
+
+// 记录屏幕宽高
+var deviceW = device.width;
+var deviceH = device.height;
+
+// 创建悬浮控制面板（复刻听雨游戏厅悬浮球交互）
+var window = floaty.rawWindow(
+    <card cornerRadius="8dp" cardBackgroundColor="#CC000000" cardElevation="5dp">
+        <vertical padding="8dp">
+            <horizontal gravity="center_vertical">
+                <text id="dragHandle" text=" ✥ 拖动准星 " textSize="12sp" textColor="#00E5FF" bg="#333333" padding="6dp" />
+                <text text="  " />
+                <button id="toggleBtn" text="[未连点]" textSize="11sp" textColor="#FFFFFF" bg="#FF3D00" h="35dp" w="90dp"/>
+            </horizontal>
+            <text text="▼ 准星正下方即为连点落点 ▼" textSize="9sp" textColor="#FFEB3B" gravity="center" marginTop="4dp"/>
+            <view id="crosshair" bg="#FF5252" w="20dp" h="20dp" layout_gravity="center" marginTop="4dp" alpha="0.8"/>
+        </vertical>
+    </card>
+);
+
+window.setTouchable(true);
+window.setPosition(deviceW / 2 - 100, deviceH / 3);
+
+// 变量定义
+var isRunning = false;
+var clickThread = null;
+
+// 1. 拖动把手：实现悬浮窗自由拖动
+var x = 0, y = 0, windowX = 0, windowY = 0;
+window.dragHandle.setOnTouchListener(function(view, event) {
+    switch (event.getAction()) {
+        case event.ACTION_DOWN:
+            x = event.getRawX();
+            y = event.getRawY();
+            windowX = window.getX();
+            windowY = window.getY();
+            return true;
+        case event.ACTION_MOVE:
+            window.setPosition(windowX + (event.getRawX() - x), windowY + (event.getRawY() - y));
+            return true;
+    }
+    return true;
+});
+
+// 2. 核心连点按钮：按住触发连点，松手停止
+window.toggleBtn.setOnTouchListener(function(view, event) {
+    switch (event.ACTION_DOWN:
+        if (!isRunning) {
+            isRunning = true;
+            ui.run(() => {
+                window.toggleBtn.setText("[连点中]");
+                window.toggleBtn.attr("bg", "#00C853");
+            });
+            startBurstEngine();
+        }
+        return true;
+    case event.ACTION_UP:
+    case event.ACTION_CANCEL:
+        if (isRunning) {
+            isRunning = false;
+            ui.run(() => {
+                window.toggleBtn.setText("[未连点]");
+                window.toggleBtn.attr("bg", "#FF3D00");
+            });
+            stopBurstEngine();
+        }
+        return true;
+    }
+    return true;
+});
+
+// 3. 高精度无障碍手势连点引擎（带防封随机偏移）
+function startBurstEngine() {
+    if (clickThread) clickThread.interrupt();
+    clickThread = threads.start(function() {
+        while (isRunning) {
+            // 获取十字准星在屏幕上的绝对物理坐标中心
+            let cX = window.getX() + window.getWidth() / 2;
+            let cY = window.getY() + window.getHeight() + 30;
+
+            // 叠加 ±7 像素的拟人化随机微偏移
+            let randomX = Math.round(cX + (Math.random() * 14 - 7));
+            let randomY = Math.round(cY + (Math.random() * 14 - 7));
+
+            // 确保坐标在屏幕内
+            randomX = Math.max(10, Math.min(deviceW - 10, randomX));
+            randomY = Math.max(10, Math.min(deviceH - 10, randomY));
+
+            // 使用无障碍全局手势精准点击（穿透所有游戏引擎）
+            try {
+                press(randomX, randomY, random(12, 22)); // 随机按压时长 12~22毫秒
+            } catch (e) {}
+
+            // 随机连点间隔 (38ms ~ 68ms，约合每秒 15~25 次点击)
+            sleep(random(38, 68));
+        }
+    });
+}
+
+function stopBurstEngine() {
+    if (clickThread) {
+        clickThread.interrupt();
+        clickThread = null;
+    }
+}
